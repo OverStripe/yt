@@ -13,7 +13,7 @@ email_username = "songindian16@gmail.com"
 email_password = os.getenv("EMAIL_PASSWORD", "gxzk hegw vbks pavr")  # App Password
 
 # Telegram Bot Token
-telegram_bot_token = "7709293848:AAG8zY79Sz_nnsSB0GjwiPAobwVfXi8gUZ8"  # Replace with your Telegram bot token
+telegram_bot_token = "7367928267:AAHh9Qvw-zRm6dIA86ADdcyd2Y12TXkcHfY"  # Replace with your Telegram bot token
 
 # Email settings
 recipient_email = "recover@telegram.org"
@@ -32,7 +32,7 @@ I am using my phone number: {}
 """
 
 # Owner ID (replace with your Telegram user ID)
-OWNER_ID = 7202072688  # Only this user can use the bot
+OWNER_ID = 7140556192  # Only this user can use the bot
 
 # Conversation states
 PHONE_NUMBER, CUSTOM_MESSAGE = range(2)
