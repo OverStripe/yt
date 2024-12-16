@@ -1,17 +1,18 @@
-from telegram import Update, Bot
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ConversationHandler
+import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ConversationHandler, filters
 
 # Gmail SMTP Configuration
 smtp_server = "smtp.gmail.com"
 smtp_port = 587
 email_username = "songindian16@gmail.com"
-email_password = "*FlashShine*"  # Use an app-specific password if 2FA is enabled
+email_password = os.getenv("EMAIL_PASSWORD", "gxzk hegw vbks pavr")  # App Password (default set for now)
 
 # Telegram Bot Token
-telegram_bot_token = "7709293848:AAEcp4yauyRpkBLgZNdGMlXUFiNXOdnkZCw"  # Replace with your Telegram bot token
+telegram_bot_token = "7709293848:AAEBWJgH-InmHjT757rz2szg_gS1e44chdg"  # Replace with your Telegram bot token
 
 # Email settings
 recipient_email = "recover@telegram.org"
@@ -32,11 +33,10 @@ I am using my phone number: {}
 # Conversation states
 PHONE_NUMBER, CUSTOM_MESSAGE = range(2)
 
-
 # Function to send email
 def send_email(phone_number, custom_message):
     try:
-        # Decide the message content
+        # Prepare the email content
         if not custom_message.strip():
             message_body = default_message.format(phone_number)
         else:
@@ -60,7 +60,7 @@ def send_email(phone_number, custom_message):
         return f"❌ Failed to send recovery email: {e}"
 
 
-# Handlers
+# Telegram Bot Handlers
 async def start(update: Update, context):
     await update.message.reply_text("Welcome! Please enter the phone number you want to recover.")
     return PHONE_NUMBER
@@ -92,9 +92,10 @@ async def cancel(update: Update, context):
 
 # Main function to run the bot
 def main():
+    # Create the application
     application = ApplicationBuilder().token(telegram_bot_token).build()
 
-    # Define the conversation handler
+    # Conversation handler for the interaction
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -104,9 +105,10 @@ def main():
         fallbacks=[CommandHandler('cancel', cancel)],
     )
 
+    # Add the handler to the application
     application.add_handler(conv_handler)
 
-    # Run the bot
+    # Start polling
     application.run_polling()
 
 
