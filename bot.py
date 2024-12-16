@@ -1,5 +1,6 @@
 import os
 import smtplib
+import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from telegram import Update
@@ -9,10 +10,10 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Con
 smtp_server = "smtp.gmail.com"
 smtp_port = 587
 email_username = "songindian16@gmail.com"
-email_password = os.getenv("EMAIL_PASSWORD", "gxzk hegw vbks pavr")  # App Password (default set for now)
+email_password = os.getenv("EMAIL_PASSWORD", "gxzk hegw vbks pavr")  # App Password
 
 # Telegram Bot Token
-telegram_bot_token = "7709293848:AAEBWJgH-InmHjT757rz2szg_gS1e44chdg"  # Replace with your Telegram bot token
+telegram_bot_token = "7709293848:AAG8zY79Sz_nnsSB0GjwiPAobwVfXi8gUZ8"  # Replace with your Telegram bot token
 
 # Email settings
 recipient_email = "recover@telegram.org"
@@ -30,8 +31,17 @@ Can you verify my account for that?
 I am using my phone number: {}
 """
 
+# Owner ID (replace with your Telegram user ID)
+OWNER_ID = 7202072688  # Only this user can use the bot
+
 # Conversation states
 PHONE_NUMBER, CUSTOM_MESSAGE = range(2)
+
+# Global storage for phone number and custom message
+phone_number = None
+custom_message = None
+auto_send = False
+
 
 # Function to send email
 def send_email(phone_number, custom_message):
@@ -60,33 +70,67 @@ def send_email(phone_number, custom_message):
         return f"❌ Failed to send recovery email: {e}"
 
 
+# Permission check
+def is_owner(update: Update):
+    return update.effective_user.id == OWNER_ID
+
+
 # Telegram Bot Handlers
 async def start(update: Update, context):
+    if not is_owner(update):
+        await update.message.reply_text("❌ You are not authorized to use this bot.")
+        return ConversationHandler.END
+
     await update.message.reply_text("Welcome! Please enter the phone number you want to recover.")
     return PHONE_NUMBER
 
 
-async def phone_number(update: Update, context):
-    context.user_data['phone_number'] = update.message.text
+async def phone_number_handler(update: Update, context):
+    global phone_number
+    if not is_owner(update):
+        await update.message.reply_text("❌ You are not authorized to use this bot.")
+        return ConversationHandler.END
+
+    phone_number = update.message.text
     await update.message.reply_text(
         "Got it! Now, you can enter a custom message for the recovery email or type 'default' to use the standard message."
     )
     return CUSTOM_MESSAGE
 
 
-async def custom_message(update: Update, context):
+async def custom_message_handler(update: Update, context):
+    global custom_message, auto_send
+    if not is_owner(update):
+        await update.message.reply_text("❌ You are not authorized to use this bot.")
+        return ConversationHandler.END
+
     custom_message = update.message.text
     if custom_message.lower() == 'default':
         custom_message = ""  # Use the default template
 
-    phone_number = context.user_data['phone_number']
+    # Send the first email
     result = send_email(phone_number, custom_message)
     await update.message.reply_text(result)
+
+    # Start auto-sending every 5 minutes
+    auto_send = True
+    await update.message.reply_text("Auto-sending emails every 5 minutes. Type /stop to cancel.")
+    while auto_send:
+        time.sleep(300)  # 5 minutes
+        result = send_email(phone_number, custom_message)
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=result)
+
     return ConversationHandler.END
 
 
-async def cancel(update: Update, context):
-    await update.message.reply_text("Operation canceled. You can start again by typing /start.")
+async def stop(update: Update, context):
+    global auto_send
+    if not is_owner(update):
+        await update.message.reply_text("❌ You are not authorized to use this bot.")
+        return ConversationHandler.END
+
+    auto_send = False
+    await update.message.reply_text("Auto-sending stopped. You can start again by typing /start.")
     return ConversationHandler.END
 
 
@@ -99,10 +143,10 @@ def main():
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            PHONE_NUMBER: [MessageHandler(filters.TEXT & ~filters.COMMAND, phone_number)],
-            CUSTOM_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, custom_message)],
+            PHONE_NUMBER: [MessageHandler(filters.TEXT & ~filters.COMMAND, phone_number_handler)],
+            CUSTOM_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, custom_message_handler)],
         },
-        fallbacks=[CommandHandler('cancel', cancel)],
+        fallbacks=[CommandHandler('stop', stop)],
     )
 
     # Add the handler to the application
