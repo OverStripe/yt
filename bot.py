@@ -11,7 +11,7 @@ email_username = "songindian16@gmail.com"
 email_password = "*FlashShine*"  # Use an app-specific password if 2FA is enabled
 
 # Telegram Bot Token
-telegram_bot_token = "YOUR_TELEGRAM_BOT_TOKEN"  # Replace with your Telegram bot token
+telegram_bot_token = "7709293848:AAEcp4yauyRpkBLgZNdGMlXUFiNXOdnkZCw"  # Replace with your Telegram bot token
 
 # Email settings
 recipient_email = "recover@telegram.org"
