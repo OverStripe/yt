@@ -1,25 +1,25 @@
 import os
-import smtplib
 import time
+import itertools
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from telethon.sync import TelegramClient
+from telethon.errors import PhoneNumberBannedError, SessionPasswordNeededError
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ConversationHandler, filters
 
-# Gmail SMTP Configuration
+# Configuration
 smtp_server = "smtp.gmail.com"
 smtp_port = 587
 email_username = "songindian16@gmail.com"
 email_password = os.getenv("EMAIL_PASSWORD", "gxzk hegw vbks pavr")  # App Password
-
-# Telegram Bot Token
-telegram_bot_token = "7367928267:AAGaElGQaoMg2jA9loHuxd7gSoXJ6V2ak7w"  # Replace with your Telegram bot token
+telegram_bot_token = "7787236358:AAEIVQT3Y4DA9xxgzt6rrk6LBr9wLTJKrOI"
+API_ID = "28142132"
+API_HASH = "82fe6161120bd237293a4d6da61808e3"
+OWNER_ID = 7640331919  # Only this user can use the bot
 
 # Email settings
-recipient_email = "support@telegram.org"
 subject = "Account Recovery Request"
-
-# Default email message template
 default_message = """
 Hello, Telegram administration
 
@@ -31,51 +31,42 @@ Can you verify my account for that?
 I am using my phone number: {}
 """
 
-# Owner ID (replace with your Telegram user ID)
-OWNER_ID = 7140556192  # Only this user can use the bot
-
-# Conversation states
-PHONE_NUMBER, CUSTOM_MESSAGE = range(2)
-
-# Global storage for phone number and custom message
+# Global variables
 phone_number = None
 custom_message = None
 auto_send = False
-
+recipients_cycle = itertools.cycle(["support@telegram.org", "recover@telegram.org"])
 
 # Function to send email
 def send_email(phone_number, custom_message):
     try:
-        # Prepare the email content
+        recipient_email = next(recipients_cycle)
+
         if not custom_message.strip():
             message_body = default_message.format(phone_number)
         else:
             message_body = custom_message
 
         with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()  # Start TLS encryption
-            server.login(email_username, email_password)  # Login to Gmail SMTP server
-            
-            # Create the email
+            server.starttls()
+            server.login(email_username, email_password)
+
             msg = MIMEMultipart()
             msg['From'] = email_username
             msg['To'] = recipient_email
             msg['Subject'] = subject
             msg.attach(MIMEText(message_body, 'plain'))
-            
-            # Send the email
+
             server.sendmail(email_username, recipient_email, msg.as_string())
-            return "✅ Recovery email sent successfully!"
+            return f"✅ Recovery email sent successfully to {recipient_email}!"
     except Exception as e:
         return f"❌ Failed to send recovery email: {e}"
-
 
 # Permission check
 def is_owner(update: Update):
     return update.effective_user.id == OWNER_ID
 
-
-# Telegram Bot Handlers
+# Handlers
 async def start(update: Update, context):
     if not is_owner(update):
         await update.message.reply_text("❌ You are not authorized to use this bot.")
@@ -83,7 +74,6 @@ async def start(update: Update, context):
 
     await update.message.reply_text("Welcome! Please enter the phone number you want to recover.")
     return PHONE_NUMBER
-
 
 async def phone_number_handler(update: Update, context):
     global phone_number
@@ -97,7 +87,6 @@ async def phone_number_handler(update: Update, context):
     )
     return CUSTOM_MESSAGE
 
-
 async def custom_message_handler(update: Update, context):
     global custom_message, auto_send
     if not is_owner(update):
@@ -108,20 +97,17 @@ async def custom_message_handler(update: Update, context):
     if custom_message.lower() == 'default':
         custom_message = ""  # Use the default template
 
-    # Send the first email
     result = send_email(phone_number, custom_message)
     await update.message.reply_text(result)
 
-    # Start auto-sending every 5 minutes
     auto_send = True
-    await update.message.reply_text("Auto-sending emails every 5 minutes. Type /stop to cancel.")
+    await update.message.reply_text("Auto-sending emails every 15 minutes. Type /stop to cancel.")
     while auto_send:
-        time.sleep(300)  # 5 minutes
+        time.sleep(900)  # 15 minutes
         result = send_email(phone_number, custom_message)
         await context.bot.send_message(chat_id=update.effective_chat.id, text=result)
 
     return ConversationHandler.END
-
 
 async def stop(update: Update, context):
     global auto_send
@@ -133,13 +119,30 @@ async def stop(update: Update, context):
     await update.message.reply_text("Auto-sending stopped. You can start again by typing /start.")
     return ConversationHandler.END
 
+async def check(update: Update, context):
+    if not is_owner(update):
+        await update.message.reply_text("❌ You are not authorized to use this bot.")
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text("Please provide the phone number to check. Usage: /check <phone_number>")
+        return
+
+    phone_number_to_check = context.args[0]
+
+    try:
+        async with TelegramClient("temp_session", API_ID, API_HASH) as client:
+            await client.send_code_request(phone_number_to_check)
+            await update.message.reply_text(f"✅ The phone number {phone_number_to_check} is not banned. OTP was successfully sent.")
+    except PhoneNumberBannedError:
+        await update.message.reply_text(f"⚠️ The phone number {phone_number_to_check} is banned. Please contact Telegram support.")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Failed to check phone number: {e}")
 
 # Main function to run the bot
 def main():
-    # Create the application
     application = ApplicationBuilder().token(telegram_bot_token).build()
 
-    # Conversation handler for the interaction
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -149,12 +152,10 @@ def main():
         fallbacks=[CommandHandler('stop', stop)],
     )
 
-    # Add the handler to the application
     application.add_handler(conv_handler)
+    application.add_handler(CommandHandler('check', check))
 
-    # Start polling
     application.run_polling()
-
 
 if __name__ == '__main__':
     main()
