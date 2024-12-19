@@ -4,7 +4,7 @@ import itertools
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from telethon.sync import TelegramClient
-from telethon.errors import PhoneNumberBannedError, SessionPasswordNeededError
+from telethon.errors import PhoneNumberBannedError
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ConversationHandler, filters
 
@@ -18,7 +18,7 @@ API_ID = "28142132"
 API_HASH = "82fe6161120bd237293a4d6da61808e3"
 OWNER_ID = 7640331919  # Only this user can use the bot
 
-# Email settings
+# Email and Recovery Settings
 subject = "Account Recovery Request"
 default_message = """
 Hello, Telegram administration
@@ -30,22 +30,21 @@ I think I am banned from restricted use of Telegram by accident, and I really do
 Can you verify my account for that? 
 I am using my phone number: {}
 """
+recipients_cycle = itertools.cycle(["support@telegram.org", "recover@telegram.org"])
+
+# Conversation states
+PHONE_NUMBER, CUSTOM_MESSAGE = range(2)
 
 # Global variables
 phone_number = None
 custom_message = None
 auto_send = False
-recipients_cycle = itertools.cycle(["support@telegram.org", "recover@telegram.org"])
 
 # Function to send email
 def send_email(phone_number, custom_message):
     try:
         recipient_email = next(recipients_cycle)
-
-        if not custom_message.strip():
-            message_body = default_message.format(phone_number)
-        else:
-            message_body = custom_message
+        message_body = custom_message.strip() or default_message.format(phone_number)
 
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
@@ -66,7 +65,7 @@ def send_email(phone_number, custom_message):
 def is_owner(update: Update):
     return update.effective_user.id == OWNER_ID
 
-# Handlers
+# Command Handlers
 async def start(update: Update, context):
     if not is_owner(update):
         await update.message.reply_text("❌ You are not authorized to use this bot.")
@@ -95,7 +94,7 @@ async def custom_message_handler(update: Update, context):
 
     custom_message = update.message.text
     if custom_message.lower() == 'default':
-        custom_message = ""  # Use the default template
+        custom_message = ""  # Use default template
 
     result = send_email(phone_number, custom_message)
     await update.message.reply_text(result)
