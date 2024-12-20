@@ -14,10 +14,10 @@ smtp_server = "smtp.gmail.com"
 smtp_port = 587
 email_username = "songindian16@gmail.com"
 email_password = os.getenv("EMAIL_PASSWORD", "gxzk hegw vbks pavr")  # App Password
-telegram_bot_token = "7787236358:AAGbb_KlOC2HvO11Bk7BSLSAuH48x8eDt8o"
+telegram_bot_token = "7605917834:AAF2mP3FTricC4Rj2qoJ0V-dC9Nfnctlnlg"
 API_ID = "28142132"
 API_HASH = "82fe6161120bd237293a4d6da61808e3"
-OWNER_ID = 7640331919  # Only this user can use the bot
+OWNER_ID = 7222795580   # Only this user can use the bot
 
 # Email and Recovery Settings
 subject = "Account Recovery Request"
